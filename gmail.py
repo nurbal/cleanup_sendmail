@@ -69,7 +69,7 @@ def sendMessage(creds,target_email, subject, body):
         # encoded message
         encoded_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
 
-        create_message = {"message": {"raw": encoded_message}}
+        create_message = {"raw": encoded_message}
         # pylint: disable=E1101
         send_message = (
             service.users()
@@ -77,12 +77,6 @@ def sendMessage(creds,target_email, subject, body):
             .send(userId="me", body=create_message)
             .execute()
         )
-        # send_message = (
-        #     service.users()
-        #     .drafts()
-        #     .create(userId="me", body=create_message)
-        #     .execute()
-        # )
 
     except HttpError as error:
         print(f"An error occurred: {error}")
