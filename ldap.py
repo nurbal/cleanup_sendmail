@@ -68,6 +68,8 @@ def query_ldap_users(local_private_key_file = "secrets/ldap/Google_2026_01_26_66
 
 
 if __name__ == "__main__":
+    # use directly only for test purpose
+
     # Parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("username", help="username to query")

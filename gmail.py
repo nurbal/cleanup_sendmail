@@ -10,17 +10,20 @@ import google.auth
 from email.message import EmailMessage
 import base64
 
-def getSecretFile(directory='secrets/gmail/'):
+mydir = os.path.dirname(os.path.realpath(__file__))+'/'
+
+def getSecretFile():
+    directory = mydir+'secrets/gmail/'
     files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
     for file in files:
-        if file.endswith('.json'):
+        if file.endswith('.json') and file.startswith('client_secret_'):
             return directory+file
     return None
 
 
 def getCrendentials():
     creds = None
-    token_path = "secrets/gmail/token.json"
+    token_path = mydir+"secrets/gmail/token.json"
     SCOPES = ["https://www.googleapis.com/auth/gmail.compose"]
 
     # The file token.json stores the user's access and refresh tokens, and is
@@ -28,6 +31,10 @@ def getCrendentials():
     # time.
     if os.path.exists(token_path):
         creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+    if not creds:
+        print('No credentials found in secrets/gmail/')
+    if not creds.valid:
+        print('Invalid credentials found in secrets/gmail/')
 
     # If there are no (valid) credentials available, let the user log in.
     if not creds or not creds.valid:
@@ -42,18 +49,13 @@ def getCrendentials():
         # Save the credentials for the next run
         with open(token_path, "w") as token:
             token.write(creds.to_json())
+    else:
+        print(f'Credentials found in {token_path}')
 
     return creds
 
 def sendMessage(creds,target_email, subject, body):
-    """Create and insert a draft email.
-    Print the returned draft's message and id.
-    Returns: Draft object, including draft id and message meta data.
 
-    Load pre-authorized user credentials from the environment.
-    TODO(developer) - See https://developers.google.com/identity
-    for guides on implementing OAuth2 for the application.
-    """
     try:
         # create gmail api client
         service = build("gmail", "v1", credentials=creds)
@@ -93,19 +95,7 @@ if __name__ == "__main__":
     # Parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("target_email", help="email address to which send a test mail")
-
     args = parser.parse_args()    
-
-    # scan secrets/gmail/ to retrieve clientID and secret key
-    secret_file = getSecretFile()
-    if secret_file is None:
-        print('No clientID found in secrets/gmail/')
-        exit(1) 
-    else:
-        print(f"secret file found: {secret_file}")
-
-    # # print secret_file
-    # print(f"clientID: {secret_file}")
 
     # send test mail
 
