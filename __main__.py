@@ -1,10 +1,35 @@
 import argparse
 import ldap
+import gmail
 import os
 import json
 import pathlib
+from string import Template
+import pwd
 
 mydir = os.path.dirname(os.path.realpath(__file__))+'/'
+
+def send_warning_mail(D_user,map_data,template_message):
+    print(f"Sending warning mail to {D_user['email']}...")
+
+    restore_commands = ""
+    for key in map_data:
+        restore_commands += f"mv {key} {map_data[key]}\n"
+
+    message = Template(template_message)
+    message = message.substitute(
+        display_name=D_user['display_name'],
+        email=D_user['email'],
+        restore_commands=restore_commands
+    )
+    # print(f"message:\n{message}")
+
+    # send mail
+    creds = gmail.getCrendentials()
+    gmail.sendMessage(creds, D_user['email'], 'Scratch files deleted', message)
+
+
+
 
 def main():
     # Parse arguments
@@ -50,12 +75,36 @@ def main():
         with open(cache_file, "w") as f:
             json.dump(ldap_data, f) 
 
+    # debug...
+    ldap_data['brunocarrez'] = ldap_data['bruno.carrez']
+
+    # load template message
+    template_file = mydir+"message_template.txt"
+    with open(template_file, "r") as f:
+        template_message = f.read()
+    # print(f"template_message:\n{template_message}")
+
     # scan moved files
     directory = pathlib.Path(args.movedfiles_dir).absolute()
     print(f"Scanning directory: {directory}...")
     subdirs = [f for f in os.listdir(directory) if os.path.isdir(os.path.join(directory, f))]
     for subdir in subdirs:
         print(f"Scanning subdirectory: {directory/subdir}...")
+        # subdir is the uid of the user
+        uid = int(subdir)
+        # translate uid to posixid
+        posixId = pwd.getpwuid(uid).pw_name
+        print(f"posixId: {posixId}")
+        # translate posixid to user infos
+        D_user = None
+        if posixId not in ldap_data:
+            print(f"posixId {posixId} not found in ldap_data")
+            continue    
+        else:
+            D_user = ldap_data[posixId]
+            # print(f"user: {D_user}")
+
+
         json_file = directory / subdir / 'map.json'
         if os.path.isfile(json_file):
             print(f"Reading file: {json_file}...")
@@ -65,7 +114,11 @@ def main():
                 # for key in map_data:
                 #     print(f"key: {key}")
                 #     print(f"values: {map_data[key]}")
-                
+
+                # send mail to user...
+                send_warning_mail(D_user,map_data,template_message)
+
+
                                     
 
 if __name__ == "__main__":
